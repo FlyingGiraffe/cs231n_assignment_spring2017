@@ -1,3 +1,3 @@
 # cs231n_assignment
 
-cs231n assignments
+Assignments of cs231n Convolutional Neural Networks for Visual Recognition
