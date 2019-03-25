@@ -76,7 +76,7 @@ class TwoLayerNet(object):
     # shape (N, C).                                                             #
     #############################################################################
     # we use ReLU activation
-    ReLU = np.vectorize(lambda x : max(0,x))
+    ReLU = np.vectorize(lambda x : max(0.0,x))
     h_in = np.dot(X, W1) + b1[np.newaxis,:]
     h_out = ReLU(h_in)
     scores = np.dot(h_out, W2) + b2[np.newaxis,:]
