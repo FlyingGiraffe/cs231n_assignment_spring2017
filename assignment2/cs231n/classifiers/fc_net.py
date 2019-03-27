@@ -6,6 +6,27 @@ from cs231n.layers import *
 from cs231n.layer_utils import *
 
 
+def affine_norm_relu_forward(x, w, b, gamma, beta, param, normalization='batchnorm'):
+    a, fc_cache = affine_forward(x, w, b)
+    if normalization == 'batchnorm':
+        n, n_cache = batchnorm_forward(a, gamma, beta, param)
+    if normalization == 'layernorm':
+        n, n_cache = layernorm_forward(a, gamma, beta, param)
+    out, relu_cache = relu_forward(n)
+    cache = (fc_cache, n_cache, relu_cache)
+    return out, cache
+
+def affine_norm_relu_backward(dout, cache, normalization='batchnorm'):
+    fc_cache, n_cache, relu_cache = cache
+    dn = relu_backward(dout, relu_cache)
+    if normalization == 'batchnorm':
+        da, dgamma, dbeta = batchnorm_backward_alt(dn, n_cache)
+    if normalization == 'layernorm':
+        da, dgamma, dbeta = layernorm_backward(dn, n_cache)
+    dx, dw, db = affine_backward(da, fc_cache)
+    return dx, dw, db, dgamma, dbeta
+
+
 class TwoLayerNet(object):
     """
     A two-layer fully-connected neural network with ReLU nonlinearity and
@@ -184,6 +205,10 @@ class FullyConnectedNet(object):
             self.params['b'+str(l)] = np.zeros(hidden_dims[l-1])
         self.params['W'+str(self.num_layers)] = weight_scale * np.random.randn(hidden_dims[self.num_layers-2], num_classes)
         self.params['b'+str(self.num_layers)] = np.zeros(num_classes)
+        if self.normalization != None:
+            for l in range(1, self.num_layers):
+                self.params['gamma'+str(l)] = np.ones(hidden_dims[l-1])
+                self.params['beta'+str(l)] = np.zeros(hidden_dims[l-1])
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -244,9 +269,17 @@ class FullyConnectedNet(object):
         ############################################################################
         ars = {}
         ar_caches = {}
-        ars[1], ar_caches[1] = affine_relu_forward(X, self.params['W1'], self.params['b1'])
+        if self.normalization == None:
+            ars[1], ar_caches[1] = affine_relu_forward(X, self.params['W1'], self.params['b1'])
+        else:
+            ars[1], ar_caches[1] = affine_norm_relu_forward(X, self.params['W1'], self.params['b1'],
+                               self.params['gamma1'], self.params['beta1'], self.bn_params[0], self.normalization)
         for l in range(2, self.num_layers):
-            ars[l], ar_caches[l] = affine_relu_forward(ars[l-1], self.params['W'+str(l)], self.params['b'+str(l)])
+            if self.normalization == None:
+                ars[l], ar_caches[l] = affine_relu_forward(ars[l-1], self.params['W'+str(l)], self.params['b'+str(l)])
+            else:
+                ars[l], ar_caches[l] = affine_norm_relu_forward(ars[l-1], self.params['W'+str(l)], self.params['b'+str(l)],
+                                   self.params['gamma'+str(l)], self.params['beta'+str(l)], self.bn_params[l-1], self.normalization)
         a, a_cache = affine_forward(ars[self.num_layers-1], self.params['W'+str(self.num_layers)], self.params['b'+str(self.num_layers)])
         scores = a
         ############################################################################
@@ -280,7 +313,12 @@ class FullyConnectedNet(object):
         grads['b'+str(self.num_layers)] = db
         for l in range(self.num_layers - 1, 0, -1):
             loss += 0.5 * self.reg * np.sum(self.params['W'+str(l)] * self.params['W'+str(l)])
-            dars[l-1], dW, db = affine_relu_backward(dars[l], ar_caches[l])
+            if self.normalization == None:
+                dars[l-1], dW, db = affine_relu_backward(dars[l], ar_caches[l])
+            else:
+                dars[l-1], dW, db, dgamma, dbeta = affine_norm_relu_backward(dars[l], ar_caches[l], self.normalization)
+                grads['gamma'+str(l)] = dgamma
+                grads['beta'+str(l)] = dbeta
             grads['W'+str(l)] = dW + self.reg * self.params['W'+str(l)]
             grads['b'+str(l)] = db
         ############################################################################
