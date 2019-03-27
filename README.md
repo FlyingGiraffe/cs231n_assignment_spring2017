@@ -9,3 +9,6 @@ Assignments for CS231n Convolutional Neural Networks for Visual Recognition
   + Implement a Softmax classifier
   + Two-Layer Neural Network
   + Higher Level Representations: Image Features
++ **Assignment 2**
+  + Fully-connected Neural Network
+  + Batch Normalization
