@@ -6,18 +6,40 @@ from cs231n.layers import *
 from cs231n.layer_utils import *
 
 
-def affine_norm_relu_forward(x, w, b, gamma, beta, param, normalization='batchnorm'):
+def affine_relu_dropout_forward(x, w, b, use_dropout=False, dropout_param=None):
+    a, fc_cache = affine_forward(x, w, b)
+    out, relu_cache = relu_forward(a)
+    dp_cache = None
+    if use_dropout:
+        out, dp_cache = dropout_forward(out, dropout_param)
+    cache = (fc_cache, relu_cache, dp_cache)
+    return out, cache
+
+def affine_relu_dropout_backward(dout, cache, use_dropout=False):
+    fc_cache, relu_cache, dp_cache = cache
+    if use_dropout:
+        dout = dropout_backward(dout, dp_cache)
+    da = relu_backward(dout, relu_cache)
+    dx, dw, db = affine_backward(da, fc_cache)
+    return dx, dw, db
+
+def affine_norm_relu_forward(x, w, b, gamma, beta, param, normalization='batchnorm', use_dropout=False, dropout_param=None):
     a, fc_cache = affine_forward(x, w, b)
     if normalization == 'batchnorm':
         n, n_cache = batchnorm_forward(a, gamma, beta, param)
     if normalization == 'layernorm':
         n, n_cache = layernorm_forward(a, gamma, beta, param)
     out, relu_cache = relu_forward(n)
-    cache = (fc_cache, n_cache, relu_cache)
+    dp_cache = None
+    if use_dropout:
+        out, dp_cache = dropout_forward(out, dropout_param)
+    cache = (fc_cache, n_cache, relu_cache, dp_cache)
     return out, cache
 
-def affine_norm_relu_backward(dout, cache, normalization='batchnorm'):
-    fc_cache, n_cache, relu_cache = cache
+def affine_norm_relu_backward(dout, cache, normalization='batchnorm', use_dropout=False):
+    fc_cache, n_cache, relu_cache, dp_cache = cache
+    if use_dropout:
+        dout = dropout_backward(dout, dp_cache)
     dn = relu_backward(dout, relu_cache)
     if normalization == 'batchnorm':
         da, dgamma, dbeta = batchnorm_backward_alt(dn, n_cache)
@@ -270,16 +292,20 @@ class FullyConnectedNet(object):
         ars = {}
         ar_caches = {}
         if self.normalization == None:
-            ars[1], ar_caches[1] = affine_relu_forward(X, self.params['W1'], self.params['b1'])
+            ars[1], ar_caches[1] = affine_relu_dropout_forward(X, self.params['W1'], self.params['b1'],
+                               self.use_dropout, self.dropout_param)
         else:
             ars[1], ar_caches[1] = affine_norm_relu_forward(X, self.params['W1'], self.params['b1'],
-                               self.params['gamma1'], self.params['beta1'], self.bn_params[0], self.normalization)
+                               self.params['gamma1'], self.params['beta1'], self.bn_params[0], self.normalization,
+                               self.use_dropout, self.dropout_param)
         for l in range(2, self.num_layers):
             if self.normalization == None:
-                ars[l], ar_caches[l] = affine_relu_forward(ars[l-1], self.params['W'+str(l)], self.params['b'+str(l)])
+                ars[l], ar_caches[l] = affine_relu_dropout_forward(ars[l-1], self.params['W'+str(l)], self.params['b'+str(l)],
+                                   self.use_dropout, self.dropout_param)
             else:
                 ars[l], ar_caches[l] = affine_norm_relu_forward(ars[l-1], self.params['W'+str(l)], self.params['b'+str(l)],
-                                   self.params['gamma'+str(l)], self.params['beta'+str(l)], self.bn_params[l-1], self.normalization)
+                                   self.params['gamma'+str(l)], self.params['beta'+str(l)], self.bn_params[l-1], self.normalization,
+                                   self.use_dropout, self.dropout_param)
         a, a_cache = affine_forward(ars[self.num_layers-1], self.params['W'+str(self.num_layers)], self.params['b'+str(self.num_layers)])
         scores = a
         ############################################################################
@@ -314,9 +340,9 @@ class FullyConnectedNet(object):
         for l in range(self.num_layers - 1, 0, -1):
             loss += 0.5 * self.reg * np.sum(self.params['W'+str(l)] * self.params['W'+str(l)])
             if self.normalization == None:
-                dars[l-1], dW, db = affine_relu_backward(dars[l], ar_caches[l])
+                dars[l-1], dW, db = affine_relu_dropout_backward(dars[l], ar_caches[l], self.use_dropout)
             else:
-                dars[l-1], dW, db, dgamma, dbeta = affine_norm_relu_backward(dars[l], ar_caches[l], self.normalization)
+                dars[l-1], dW, db, dgamma, dbeta = affine_norm_relu_backward(dars[l], ar_caches[l], self.normalization, self.use_dropout)
                 grads['gamma'+str(l)] = dgamma
                 grads['beta'+str(l)] = dbeta
             grads['W'+str(l)] = dW + self.reg * self.params['W'+str(l)]
