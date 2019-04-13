@@ -14,3 +14,4 @@ Assignments for CS231n Convolutional Neural Networks for Visual Recognition
   + Batch Normalization
   + Dropout
   + Convolutional Networks
+  + PyTorch on CIFAR-10
