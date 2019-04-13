@@ -12,3 +12,5 @@ Assignments for CS231n Convolutional Neural Networks for Visual Recognition
 + **Assignment 2**
   + Fully-connected Neural Network
   + Batch Normalization
+  + Dropout
+  + Convolutional Networks
