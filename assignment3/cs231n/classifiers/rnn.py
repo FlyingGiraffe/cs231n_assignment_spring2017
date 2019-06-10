@@ -140,7 +140,25 @@ class CaptioningRNN(object):
         # Note also that you are allowed to make use of functions from layers.py   #
         # in your implementation, if needed.                                       #
         ############################################################################
-        pass
+        init_h, init_h_cache = affine_forward(features, W_proj, b_proj)
+        embedded_cap, embedded_cap_cache = word_embedding_forward(captions_in, W_embed)
+        if self.cell_type == 'rnn':
+            rnn_out, rnn_cache = rnn_forward(embedded_cap, init_h, Wx, Wh, b)
+        scores, scores_cache = temporal_affine_forward(rnn_out, W_vocab, b_vocab)
+        loss, dsoftmax = temporal_softmax_loss(scores, captions_out, mask)
+        
+        # Gradients for output to vocab weights
+        dscores, grads['W_vocab'], grads['b_vocab'] = temporal_affine_backward(dsoftmax, scores_cache)
+        
+        # Gradients for parameters for the RNN
+        if self.cell_type == 'rnn':
+            dembedded_cap, dinit_h, grads['Wx'], grads['Wh'], grads['b'] = rnn_backward(dscores, rnn_cache)
+        
+        # Gradients for word vectors
+        grads['W_embed'] = word_embedding_backward(dembedded_cap, embedded_cap_cache)
+
+        # Gradients for CNN -> hidden state projection parameters
+        dcaptions_in, grads['W_proj'], grads['b_proj'] = affine_backward(dinit_h, init_h_cache)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -187,7 +205,7 @@ class CaptioningRNN(object):
         # transform to the input image features. The first word that you feed to  #
         # the RNN should be the <START> token; its value is stored in the         #
         # variable self._start. At each timestep you will need to do to:          #
-        # (1) Embed the previous word using the learned word embeddings           #
+        # (1) Embed the previous word using the learned word embeddings           #a
         # (2) Make an RNN step using the previous hidden state and the embedded   #
         #     current word to get the next hidden state.                          #
         # (3) Apply the learned affine transformation to the next hidden state to #
@@ -205,7 +223,16 @@ class CaptioningRNN(object):
         # NOTE: we are still working over minibatches in this function. Also if   #
         # you are using an LSTM, initialize the first cell state to zeros.        #
         ###########################################################################
-        pass
+        captions[:,0] = self._start
+        h, _ = affine_forward(features, W_proj, b_proj)
+        embedded_cap, _ = word_embedding_forward(captions[:,0], W_embed)
+        for t in range(max_length):
+            if self.cell_type == 'rnn':
+                h, _ = rnn_forward(embedded_cap[:,None,:], h, Wx, Wh, b)
+            scores, _ = temporal_affine_forward(h, W_vocab, b_vocab)
+            captions[:,t] = np.argmax(scores[:,0,:], axis=1)
+            embedded_cap, _ = word_embedding_forward(captions[:,t], W_embed)
+            h = h[:,0,:]
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
