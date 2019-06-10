@@ -15,3 +15,5 @@ Assignments for CS231n Convolutional Neural Networks for Visual Recognition
   + Dropout
   + Convolutional Networks
   + PyTorch on CIFAR-10
++ **Assignment 3**
+  + Image Captioning with Vanilla RNNs
