@@ -144,6 +144,8 @@ class CaptioningRNN(object):
         embedded_cap, embedded_cap_cache = word_embedding_forward(captions_in, W_embed)
         if self.cell_type == 'rnn':
             rnn_out, rnn_cache = rnn_forward(embedded_cap, init_h, Wx, Wh, b)
+        if self.cell_type == 'lstm':
+            rnn_out, rnn_cache = lstm_forward(embedded_cap, init_h, Wx, Wh, b)
         scores, scores_cache = temporal_affine_forward(rnn_out, W_vocab, b_vocab)
         loss, dsoftmax = temporal_softmax_loss(scores, captions_out, mask)
         
@@ -153,6 +155,8 @@ class CaptioningRNN(object):
         # Gradients for parameters for the RNN
         if self.cell_type == 'rnn':
             dembedded_cap, dinit_h, grads['Wx'], grads['Wh'], grads['b'] = rnn_backward(dscores, rnn_cache)
+        if self.cell_type == 'lstm':
+            dembedded_cap, dinit_h, grads['Wx'], grads['Wh'], grads['b'] = lstm_backward(dscores, rnn_cache)
         
         # Gradients for word vectors
         grads['W_embed'] = word_embedding_backward(dembedded_cap, embedded_cap_cache)
@@ -229,6 +233,8 @@ class CaptioningRNN(object):
         for t in range(max_length):
             if self.cell_type == 'rnn':
                 h, _ = rnn_forward(embedded_cap[:,None,:], h, Wx, Wh, b)
+            if self.cell_type == 'lstm':
+                h, _ = lstm_forward(embedded_cap[:,None,:], h, Wx, Wh, b)
             scores, _ = temporal_affine_forward(h, W_vocab, b_vocab)
             captions[:,t] = np.argmax(scores[:,0,:], axis=1)
             embedded_cap, _ = word_embedding_forward(captions[:,t], W_embed)
