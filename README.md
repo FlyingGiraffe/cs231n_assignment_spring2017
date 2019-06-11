@@ -18,3 +18,5 @@ Assignments for CS231n Convolutional Neural Networks for Visual Recognition
 + **Assignment 3**
   + Image Captioning with Vanilla RNNs
   + Image Captioning with LSTMs
+  + Network Visualization: Saliency maps, Class Visualization, and Fooling Images (PyTorch)
+  + Style Transfer (PyTorch)
