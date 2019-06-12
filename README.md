@@ -20,3 +20,4 @@ Assignments for CS231n Convolutional Neural Networks for Visual Recognition
   + Image Captioning with LSTMs
   + Network Visualization: Saliency maps, Class Visualization, and Fooling Images (PyTorch)
   + Style Transfer (PyTorch)
+  + Generative Adversarial Networks (PyTorch)
